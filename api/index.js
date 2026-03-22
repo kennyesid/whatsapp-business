@@ -19,7 +19,7 @@ const client = new Client({
   authStrategy: new LocalAuth(), // Guarda la sesión en la carpeta .wwebjs_auth
   puppeteer: {
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   },
 });
 
