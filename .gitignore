@@ -11,6 +11,11 @@ session.json
 *.data.json
 *.session
 
+# Sesión de WhatsApp
+session/
+.wwebjs_auth/
+.wwebjs_cache/
+
 # Archivos de Puppeteer/Chrome
 chromium-profile/
 headless_shell.tar.gz

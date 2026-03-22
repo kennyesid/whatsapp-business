@@ -2,6 +2,7 @@ const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
 const express = require("express");
+const path = require('path');
 const { default: puppeteer } = require("puppeteer");
 const app = express();
 const cors = require("cors");
@@ -17,11 +18,15 @@ const PORT = process.env.PORT || 3000;
 let lastQr = "";
 
 const client = new Client({
-  authStrategy: new LocalAuth(), // Guarda la sesión en la carpeta .wwebjs_auth
+  authStrategy: new LocalAuth({
+    dataPath: path.join(__dirname, 'session')
+  }), // Guarda la sesión en la carpeta .wwebjs_auth
   puppeteer: {
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   },
+  protocolTimeout: 60000,
+  authTimeoutMs: 60000,
 });
 
 // Evento: Generar QR
