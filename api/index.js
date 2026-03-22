@@ -1,13 +1,35 @@
+// here
+
+// const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+// const qrcode = require("qrcode-terminal");
+// const QRCode = require("qrcode");
+// const express = require("express");
+// const path = require('path');
+// const { default: puppeteer } = require("puppeteer");
+// const app = express();
+// const cors = require("cors");
+// const multer = require("multer");
+// const upload = multer();
+// here
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const QRCode = require("qrcode");
 const express = require("express");
-const path = require('path');
-const { default: puppeteer } = require("puppeteer");
+const puppeteer = require("puppeteer");  // ← OJO: así se importa, no { default: puppeteer }
 const app = express();
 const cors = require("cors");
 const multer = require("multer");
 const upload = multer();
+const path = require("path");
+// CAMBIOS PARA VOLVERLO IMAGEN
+// En lugar de puppeteer, usamos canvas + jsdom
+
+// Dentro de la ruta, reemplaza la parte de puppeteer:
+
+// Crear DOM virtual
+// Renderizar HTML a canvas es complejo, mejor usar una alternativa más simple
+// Usamos una librería de renderizado o simplemente devolvemos un texto como imagen
+// FIN CAMBIOS PARA VOLVERLO IMAGEN
 
 app.use(cors());
 app.use(express.json());
@@ -118,114 +140,184 @@ app.post("/send-message", async (req, res) => {
 });
 
 app.post("/send-message-html-form", upload.none(), async (req, res) => {
-  console.log('INIT_MESSAGE_HTML_FORM: ' + req.body.number)
   if (lastQr !== "CONNECTED") {
     return res.status(503).json({
       error: "WhatsApp no está listo",
+      status: "not_connected"
     });
   }
 
-  let browser;
   try {
-    // 2. Obtener datos del body
     const { number, content_html, caption } = req.body;
 
-    // 3. Validar campos requeridos
+    // Validar campos
     if (!number) {
       return res.status(400).json({ error: "El campo 'number' es requerido" });
     }
 
     if (!content_html) {
-      return res
-        .status(400)
-        .json({ error: "El campo 'content_html' es requerido" });
+      return res.status(400).json({ error: "El campo 'content_html' es requerido" });
     }
 
-    // 4. Decodificar HTML de base64
+    // Decodificar HTML de base64
     let htmlContent;
     try {
       htmlContent = Buffer.from(content_html, "base64").toString("utf-8");
     } catch (decodeError) {
       return res.status(400).json({
-        error: "El content_html no es un base64 válido",
+        error: "El content_html no es un base64 válido"
       });
     }
 
-    // 5. Configurar mensaje por defecto si no viene caption
-    const panelInformativo =
-      caption || "Este es un mensaje automático, por favor no responder.";
+    // Extraer texto plano (eliminar etiquetas HTML)
+    const plainText = htmlContent
+      .replace(/<[^>]*>/g, ' ')           // Remover todas las etiquetas HTML
+      .replace(/\s+/g, ' ')               // Reducir múltiples espacios a uno
+      .replace(/&nbsp;/g, ' ')            // Reemplazar &nbsp;
+      .replace(/&amp;/g, '&')             // Reemplazar &amp;
+      .replace(/&lt;/g, '<')              // Reemplazar &lt;
+      .replace(/&gt;/g, '>')              // Reemplazar &gt;
+      .trim();
 
-    // 6. Lanzar puppeteer y generar imagen
-    browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-      protocolTimeout: 60000
-    });
+    // Preparar mensaje final
+    const finalMessage = caption
+      ? `${caption}\n\n${plainText}`
+      : `📄 *Mensaje automático*\n\n${plainText}`;
 
-    const page = await browser.newPage();
-
-    // Configurar viewport para mejor calidad
-    await page.setViewport({
-      width: 800,
-      height: 600,
-      deviceScaleFactor: 2, // Mejor calidad
-    });
-
-    // Cargar el HTML
-    await page.setContent(htmlContent, {
-      waitUntil: "networkidle0", // Esperar a que carguen recursos
-    });
-
-    // Esperar un momento para que se renderice todo
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Tomar screenshot del body
-    const element = await page.$("body");
-    if (!element) {
-      throw new Error("No se encontró el elemento body en el HTML");
-    }
-
-    const imageBuffer = await element.screenshot({
-      encoding: "base64",
-      type: "png",
-      omitBackground: true, // Fondo transparente
-    });
-
-    await browser.close();
-
-    // 7. Crear y enviar mensaje con imagen
-    const media = new MessageMedia("image/png", imageBuffer);
+    // Formatear número
     const chatId = number.includes("@c.us") ? number : `591${number}@c.us`;
 
-    const response = await client.sendMessage(chatId, media, {
-      caption: panelInformativo,
-    });
+    // Enviar mensaje
+    const response = await client.sendMessage(chatId, finalMessage);
 
-    // 8. Responder éxito
     res.json({
       success: true,
-      message: "Mensaje con imagen enviado correctamente",
-      code: 200,
+      message: "Mensaje enviado correctamente",
       data: {
         id: response.id._serialized,
         number: number,
-        image_size: imageBuffer.length,
-        caption: panelInformativo,
-      },
+        message_length: finalMessage.length
+      }
     });
+
   } catch (error) {
-    console.error("Error enviando mensaje con imagen:", error);
-
-    // Cerrar browser si está abierto
-    if (browser) {
-      await browser.close().catch(console.error);
-    }
-
+    console.error("Error enviando mensaje:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message
     });
   }
 });
+
+// app.post("/send-message-html-form", upload.none(), async (req, res) => {
+//   console.log('INIT_MESSAGE_HTML_FORM: ' + req.body.number)
+//   if (lastQr !== "CONNECTED") {
+//     return res.status(503).json({
+//       error: "WhatsApp no está listo",
+//     });
+//   }
+
+//   let browser;
+//   try {
+//     // 2. Obtener datos del body
+//     const { number, content_html, caption } = req.body;
+
+//     // 3. Validar campos requeridos
+//     if (!number) {
+//       return res.status(400).json({ error: "El campo 'number' es requerido" });
+//     }
+
+//     if (!content_html) {
+//       return res
+//         .status(400)
+//         .json({ error: "El campo 'content_html' es requerido" });
+//     }
+
+//     // 4. Decodificar HTML de base64
+//     let htmlContent;
+//     try {
+//       htmlContent = Buffer.from(content_html, "base64").toString("utf-8");
+//     } catch (decodeError) {
+//       return res.status(400).json({
+//         error: "El content_html no es un base64 válido",
+//       });
+//     }
+
+//     // 5. Configurar mensaje por defecto si no viene caption
+//     const panelInformativo =
+//       caption || "Este es un mensaje automático, por favor no responder.";
+
+//     // 6. Lanzar puppeteer y generar imagen
+//     browser = await puppeteer.launch({
+//       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+//       protocolTimeout: 60000
+//     });
+
+//     const page = await browser.newPage();
+
+//     // Configurar viewport para mejor calidad
+//     await page.setViewport({
+//       width: 800,
+//       height: 600,
+//       deviceScaleFactor: 2, // Mejor calidad
+//     });
+
+//     // Cargar el HTML
+//     await page.setContent(htmlContent, {
+//       waitUntil: "networkidle0", // Esperar a que carguen recursos
+//     });
+
+//     // Esperar un momento para que se renderice todo
+//     await new Promise((resolve) => setTimeout(resolve, 1000));
+
+//     // Tomar screenshot del body
+//     const element = await page.$("body");
+//     if (!element) {
+//       throw new Error("No se encontró el elemento body en el HTML");
+//     }
+
+//     const imageBuffer = await element.screenshot({
+//       encoding: "base64",
+//       type: "png",
+//       omitBackground: true, // Fondo transparente
+//     });
+
+//     await browser.close();
+
+//     // 7. Crear y enviar mensaje con imagen
+//     const media = new MessageMedia("image/png", imageBuffer);
+//     const chatId = number.includes("@c.us") ? number : `591${number}@c.us`;
+
+//     const response = await client.sendMessage(chatId, media, {
+//       caption: panelInformativo,
+//     });
+
+//     // 8. Responder éxito
+//     res.json({
+//       success: true,
+//       message: "Mensaje con imagen enviado correctamente",
+//       code: 200,
+//       data: {
+//         id: response.id._serialized,
+//         number: number,
+//         image_size: imageBuffer.length,
+//         caption: panelInformativo,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error enviando mensaje con imagen:", error);
+
+//     // Cerrar browser si está abierto
+//     if (browser) {
+//       await browser.close().catch(console.error);
+//     }
+
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
 
 // 3. Enviar Mensaje con html
 
