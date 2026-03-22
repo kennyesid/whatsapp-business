@@ -1,0 +1,53 @@
+# Dependencias
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Archivos de autenticación de WhatsApp (¡MUY IMPORTANTE!)
+.wwebjs_auth/
+.wwebjs_cache/
+session.json
+*.data.json
+*.session
+
+# Archivos de Puppeteer/Chrome
+chromium-profile/
+headless_shell.tar.gz
+.puppeteer/
+
+# Variables de entorno
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Directorios de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Directorios de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos de cobertura de pruebas
+coverage/
+.nyc_output/
+
+# Directorios de build
+dist/
+build/
+*.tgz
