@@ -152,7 +152,8 @@ app.post("/send-message-html-form", upload.none(), async (req, res) => {
 
     // 6. Lanzar puppeteer y generar imagen
     browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      protocolTimeout: 60000
     });
 
     const page = await browser.newPage();
