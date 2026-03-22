@@ -4,13 +4,14 @@ const QRCode = require("qrcode");
 const express = require("express");
 const { default: puppeteer } = require("puppeteer");
 const app = express();
-const port = 3000;
 const cors = require("cors");
 const multer = require("multer");
 const upload = multer();
 
 app.use(cors());
 app.use(express.json());
+
+const PORT = process.env.PORT || 3000;
 
 // Guardamos el estado del QR globalmente
 let lastQr = "";
@@ -112,6 +113,7 @@ app.post("/send-message", async (req, res) => {
 });
 
 app.post("/send-message-html-form", upload.none(), async (req, res) => {
+  console.log('INIT_MESSAGE_HTML_FORM: ' + req.body.number)
   if (lastQr !== "CONNECTED") {
     return res.status(503).json({
       error: "WhatsApp no está listo",
@@ -552,8 +554,8 @@ app.post("/send-message-html", async (req, res) => {
 //   }
 // });
 
-app.listen(port, () => {
-  console.log(`Servidor REST corriendo en http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Servidor REST corriendo en http://localhost:${PORT}`);
   client.initialize();
 });
 
